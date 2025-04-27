@@ -135,24 +135,24 @@ export const tools: ChatCompletionTool[] = [{
         }
     }
 },
-    {
-        type: "function",
-        function: {
-            name: "upload_file",
-            description: "Uploads a file to an input field.",
-            parameters: {
-                type: "object",
-                properties: {
-                    id: {type: "string", description: "The file input's unique identifier."},
-                    file: {
-                        type: ["string", "array"],
-                        description: "The file(s) to upload."
-                    }
-                },
-                required: ["id", "file"]
-            }
-        }
-    },
+    // {
+    //     type: "function",
+    //     function: {
+    //         name: "upload_file",
+    //         description: "Uploads a file to an input field.",
+    //         parameters: {
+    //             type: "object",
+    //             properties: {
+    //                 id: {type: "string", description: "The file input's unique identifier."},
+    //                 file: {
+    //                     type: ["string", "array"],
+    //                     description: "The file(s) to upload."
+    //                 }
+    //             },
+    //             required: ["id", "file"]
+    //         }
+    //     }
+    // },
     {
         type: "function", function: {
             name: "go_back",

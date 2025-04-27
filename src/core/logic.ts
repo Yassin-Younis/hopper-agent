@@ -1,176 +1,410 @@
-import {extractActions, injectLabels} from "../browser/labels";
-import chromium from 'playwright';
+import playwright, {Browser, Page, BrowserContext} from 'playwright';
+import {promises as fs} from 'fs';
+import path from 'path';
+import {Agent, AgentConfig, AgentResponse} from '../agent';
+import {getSystemPrompt} from '../agent/prompts';
+import {tools} from '../agent/tools/definition';
+import {executeTool, ToolExecutionResult} from '../agent/tools/implementation';
+import {
+    DEFAULT_SCREENSHOT_PATH,
+    DEFAULT_WAIT_TIME_MS,
+    MAX_AGENT_LOOPS,
+    DEFAULT_NAVIGATION_TIMEOUT_MS,
+    LOG_PREFIX,
+    DEFAULT_MODEL
+} from '../common/constants';
+import {extractElementsInfo, injectLabelsScript} from "../browser/labels.ts";
 
-const DEFAULT_SCREENSHOT_PATH = 'screenshot.png';
-const DEFAULT_WAIT_TIME_MS = 500;
-const DEFAULT_HEADLESS_MODE = false;
+export interface ReproduceBugOptions {
+    headless?: boolean;
+    screenshotPath?: string;
+    waitingTimeBetweenActions?: number;
+    navigationTimeout?: number;
+    actionTimeout?: number;
+    maxLoops?: number;
+    openaiApiKey?: string;
+    model?: string;
+    logFilePath?: string;
+    onAgentResponse?: (response: AgentResponse, history: any[]) => void;
+    onToolExecuting?: (toolCall: any) => void;
+    onToolExecuted?: (result: ToolExecutionResult) => void;
+}
+
+export interface ReproductionResult {
+    success: boolean;
+    reproducible: boolean | null;
+    message: string;
+    history: InteractionLogEntry[];
+    error?: string;
+}
+
+interface InteractionLogEntry {
+    loop: number;
+    timestamp: string;
+    url?: string;
+    elements?: string[];
+    agentInputSummary?: string;
+    agentResponse?: AgentResponse;
+    toolResults?: ToolExecutionResult[];
+    error?: string;
+}
+
+async function appendToJsonLog(logEntry: InteractionLogEntry, filePath: string): Promise<void> {
+    try {
+        let logs: InteractionLogEntry[] = [];
+        try {
+            const data = await fs.readFile(filePath, 'utf-8');
+            logs = JSON.parse(data);
+            if (!Array.isArray(logs)) {
+                console.warn(`${LOG_PREFIX} Log file ${filePath} does not contain a valid JSON array. Initializing.`);
+                logs = [];
+            }
+        } catch (readError: any) {
+            if (readError.code !== 'ENOENT') {
+                console.warn(`${LOG_PREFIX} Error reading log file ${filePath}: ${readError.message}. Initializing.`);
+            }
+            logs = [];
+        }
+
+        logs.push(logEntry);
+
+        await fs.writeFile(filePath, JSON.stringify(logs, null, 2), 'utf-8'); // Pretty print JSON
+
+    } catch (writeError: any) {
+        console.error(`${LOG_PREFIX} !!! Failed to write to log file ${filePath}:`, writeError);
+    }
+}
+
 
 /**
- * Uses a Playwright agent to attempt to reproduce steps described in a bug report.
- * Logs are prefixed with [Agent] for consistency.
+ * Main function to attempt bug reproduction using the LLM agent.
+ * Logs interactions to a JSON file.
  *
- * @param {string} url The starting URL for the test.
- * @param {string} bugReport The natural language bug report describing the steps and issue.
- * @param {object} [options={}] Optional configuration.
- * @param {boolean} [options.headless=false] Run the browser in headless mode.
- * @param {string} [options.screenshotPath='screenshot.png'] Path to save screenshots.
- * @param {number} [options.waitingTimeBetweenActions=500] Wait time in ms between agent actions.
- * @returns {Promise<object>} A promise that resolves to an object containing the results.
- *                            { reproducible: boolean, errors: Array<string>, history: Array<string> }
+ * @param url The starting URL for the test.
+ * @param bugReport The natural language bug report describing the steps and issue.
+ * @param options Optional configuration for the reproduction process.
+ * @returns A Promise resolving to a ReproductionResult object.
  */
-async function reproduceBug(url, bugReport, options = {}) {
-    if (!url || typeof url !== 'string') {
-        throw new Error('[Agent] The "url" parameter (string) is required.');
-    }
-    if (!bugReport || typeof bugReport !== 'string') {
-        throw new Error('[Agent] The "bugReport" parameter (string) is required.');
-    }
+export async function reproduceBug(
+    url: string,
+    bugReport: string,
+    options: ReproduceBugOptions = {}
+): Promise<ReproductionResult> {
 
-    const {
-        headless = DEFAULT_HEADLESS_MODE,
-        screenshotPath = DEFAULT_SCREENSHOT_PATH,
-        waitingTimeBetweenActions = DEFAULT_WAIT_TIME_MS
-    } = options;
+    const config = {
+        headless: options.headless ?? true,
+        screenshotPath: options.screenshotPath || DEFAULT_SCREENSHOT_PATH,
+        loopDelayMs: options.waitingTimeBetweenActions || DEFAULT_WAIT_TIME_MS,
+        navigationTimeout: options.navigationTimeout || DEFAULT_NAVIGATION_TIMEOUT_MS,
+        maxLoops: options.maxLoops || MAX_AGENT_LOOPS,
+        openaiApiKey: options.openaiApiKey,
+        model: options.model || DEFAULT_MODEL,
+        logFilePath: options.logFilePath || 'logs.json',
+        onAgentResponse: options.onAgentResponse,
+        onToolExecuting: options.onToolExecuting,
+        onToolExecuted: options.onToolExecuted,
+    };
+    const logFilePath = path.resolve(config.logFilePath);
+    const logDirPath = path.dirname(logFilePath);
 
-    console.log(`[Agent] --- Starting Bug Reproduction ---`);
-    console.log(`[Agent] URL: ${url}`);
-    console.log(`[Agent] Headless: ${headless}`);
-    console.log(`[Agent] Wait Time (ms): ${waitingTimeBetweenActions}`);
-    console.log(`[Agent] Screenshot Path: ${screenshotPath}`);
-    console.log(`[Agent] Goal: "${bugReport.substring(0, 150).replace(/\n/g, ' ')}..."`); // Log goal concisely
-
-    let browser = null; // Initialize browser to null for finally block
-    const errors = []; // Collect errors encountered during execution
-    const history = []; // Track agent's thoughts/actions
-    let agentTerminated = false;
-    let reproducible = false; // Track if the bug is reproducible
+    console.log(`${LOG_PREFIX} --- Starting Bug Reproduction ---`);
+    console.log(`${LOG_PREFIX} Config: ${JSON.stringify({
+        ...config,
+        openaiApiKey: config.openaiApiKey ? '***' : 'Not Set',
+        logFilePath: logFilePath
+    })}`);
+    console.log(`${LOG_PREFIX} Goal: "${bugReport.substring(0, 150).replace(/\n/g, ' ')}..."`);
 
     try {
-        console.log("[Agent] Launching browser...");
-        browser = await chromium.launch({headless});
-        const context = await browser.newContext();
-        const page = await context.newPage();
-        console.log("[Agent] Browser launched, new page created.");
+        await fs.mkdir(logDirPath, { recursive: true });
+        console.log(`${LOG_PREFIX} Ensured log directory exists: ${logDirPath}`);
+    } catch (mkdirError: any) {
+        console.error(`${LOG_PREFIX} Failed to create log directory ${logDirPath}:`, mkdirError);
+    }
 
-        page.on('load', async (loadedPage) => {
-            console.log(`[Agent] Page loaded: ${loadedPage.url()}. Injecting accessibility labels.`);
-            try {
-                await loadedPage.evaluate(injectLabels);
-                console.log(`[Agent] Labels injected on ${loadedPage.url()}`);
-            } catch (injectionError) {
-                console.error("[Agent] Error injecting labels:", injectionError.message);
-            }
-        });
+    try {
+        await fs.writeFile(logFilePath, '[]', 'utf-8');
+        console.log(`${LOG_PREFIX} Initialized log file at ${logFilePath}`);
+    } catch (initError) {
+        console.error(`${LOG_PREFIX} Failed to initialize log file ${logFilePath}:`, initError);
+    }
 
-        console.log(`[Agent] Navigating to initial URL: ${url}`);
-        await page.goto(url, {waitUntil: 'domcontentloaded', timeout: 30000}); // Use domcontentloaded for faster initial load, add timeout
-        console.log("[Agent] Initial navigation complete.");
+    let browser: Browser | null = null;
+    let context: BrowserContext | null = null;
+    let page: Page | null = null;
+    let finalResult: ReproductionResult = {
+        success: false,
+        reproducible: null,
+        message: "Process did not complete as expected.",
+        history: [],
+        error: undefined,
+    };
 
-        // --- Agent Interaction Loop ---
-        const goal = bugReport; // Agent's objective
-        let loopCounter = 0; // Prevent infinite loops
-        const MAX_LOOPS = 30; // Set a maximum number of agent iterations
+    try {
+        const agentConfig: AgentConfig = {
+            apiKey: config.openaiApiKey,
+            model: config.model,
+            systemPromptGenerator: getSystemPrompt,
+            tools,
+        };
+        const agent = new Agent(agentConfig);
+        agent.startNewTask(bugReport);
 
-        while (loopCounter < MAX_LOOPS) {
+        console.log(`${LOG_PREFIX} Launching browser (headless: ${config.headless})...`);
+        browser = await playwright.chromium.launch({headless: config.headless});
+        context = await browser.newContext({viewport: null, userAgent: 'BugReproAgent/1.0'});
+        context.setDefaultNavigationTimeout(config.navigationTimeout);
+        page = await context.newPage();
+        console.log(`${LOG_PREFIX} Browser launched, page created.`);
+        await page.addInitScript(injectLabelsScript)
+        // page.on('load', async (loadedPage) => {
+        //
+        //     console.log(`[Agent] Page loaded: ${loadedPage.url()}. Injecting accessibility labels.`);
+        //     try {
+        //         await loadedPage.evaluate(injectLabels);
+        //         console.log(`[Agent] Labels injected on ${loadedPage.url()}`);
+        //     } catch (injectionError) {
+        //         console.error("[Agent] Error injecting labels:", injectionError.message);
+        //     }
+        // });
+
+
+        console.log(`${LOG_PREFIX} Label injection script added.`);
+
+        console.log(`${LOG_PREFIX} Navigating to initial URL: ${url}`);
+        await page.goto(url, {waitUntil: 'domcontentloaded'});
+        await page.waitForLoadState('networkidle', {timeout: 15000}).catch(e => console.warn(`${LOG_PREFIX} Network idle timeout exceeded after initial load.`));
+        console.log(`${LOG_PREFIX} Initial navigation complete. Current URL: ${page.url()}`);
+        await appendToJsonLog({
+            loop: 0, // Represent initial state
+            timestamp: new Date().toISOString(),
+            url: page.url(),
+            agentInputSummary: "Initial page load completed.",
+        }, logFilePath);
+
+
+        let loopCounter = 0;
+        let currentToolResults: ToolExecutionResult[] | undefined = undefined;
+        let agentTerminatedNormally = false;
+
+        while (loopCounter < config.maxLoops) {
             loopCounter++;
-            console.log(`\n[Agent] --- Loop Iteration ${loopCounter}/${MAX_LOOPS} ---`);
-            await page.waitForTimeout(waitingTimeBetweenActions); // Wait before acting
+            const loopTimestamp = new Date().toISOString();
+            let currentLogEntry: InteractionLogEntry = {loop: loopCounter, timestamp: loopTimestamp};
 
-            console.log("[Agent] Taking screenshot...");
-            await page.screenshot({path: screenshotPath});
-            console.log(`[Agent] Screenshot saved to ${screenshotPath}`);
+            console.log(`\n${LOG_PREFIX} --- Loop ${loopCounter}/${config.maxLoops} ---`);
+            if (!page || page.isClosed()) {
+                currentLogEntry.error = "Page was closed unexpectedly.";
+                await appendToJsonLog(currentLogEntry, logFilePath);
+                throw new Error("Page was closed unexpectedly.");
+            }
 
-            console.log("[Agent] Extracting actions/accessibility tree...");
-            const accessibilityTree = await extractActions(page); // Assuming this returns the necessary info
-            // console.log("[Agent] Accessibility Tree:", accessibilityTree); // Uncomment for deep debugging
+            try {
+                await page.waitForTimeout(config.loopDelayMs);
 
-            console.log("[Agent] Requesting next action from agent model...");
-            // Pass current state (screenshot, goal, tree, errors, history) to the agent model
-            const agentGuess = await runAgentGuess(screenshotPath, goal, accessibilityTree, errors, history);
-            // console.log("[Agent] Raw Agent Guess:", JSON.stringify(agentGuess)); // Uncomment for deep debugging
+                // 1. Get Current State
+                console.log(`${LOG_PREFIX} Getting page state...`);
+                currentLogEntry.url = page.url();
+                await page.screenshot({path: config.screenshotPath, fullPage: false});
+                console.log(`${LOG_PREFIX} Screenshot saved to ${config.screenshotPath}`);
+                const elementsInfo = await extractElementsInfo(page);
+                currentLogEntry.elements = elementsInfo; // Log the extracted elements
+                console.log(`${LOG_PREFIX} Extracted ${elementsInfo.length} interactive elements.`);
 
-            // Check for termination condition FIRST
-            if (isTerminatingGuess(agentGuess)) {
-                console.log("[Agent] Agent signaled termination.");
-                agentTerminated = true;
-                reproducible = isReproducableGuess(agentGuess); // Check if agent confirmed reproducibility
-                if (agentGuess.content) {
-                    const finalMessage = `[Agent] Agent Final Message: ${agentGuess.content}`;
-                    console.log(finalMessage);
-                    history.push(finalMessage);
-                } else {
-                    history.push("[Agent] Agent terminated without final message.");
+                // 2. Prepare Agent Prompt
+                const promptSummary = `URL: ${currentLogEntry.url}\nElements: ${elementsInfo.length} found.\nTask: Continue bug reproduction.`;
+                currentLogEntry.agentInputSummary = promptSummary; // Log summary
+                const fullPrompt = `
+Current URL: ${currentLogEntry.url}
+Visible Interactive Elements:
+\`\`\`
+${elementsInfo.length > 0 ? elementsInfo.join('\n') : 'No interactive elements detected.'}
+\`\`\`
+`;
+
+                // 3. Call Agent
+                console.log(`${LOG_PREFIX} Asking agent for next action...`);
+                const agentResponse = await agent.getNextAction(
+                    fullPrompt,
+                    config.screenshotPath,
+                    currentToolResults
+                );
+                currentLogEntry.agentResponse = {
+                    response: agentResponse.response,
+                    toolCalls: agentResponse.toolCalls
+                };
+                if (config.onAgentResponse) {
+                    config.onAgentResponse(agentResponse, agent.getHistory());
                 }
-                break; // Exit the loop
+
+                currentToolResults = [];
+
+                // 4. Check for Termination & Execute Tools
+                let shouldTerminate = false;
+                let terminationReason = "";
+                let bugFound = false;
+                let terminationToolResult: ToolExecutionResult | undefined = undefined;
+
+                if (agentResponse.toolCalls && agentResponse.toolCalls.length > 0) {
+                    console.log(`${LOG_PREFIX} Processing ${agentResponse.toolCalls.length} tool call(s)...`);
+                    for (const toolCall of agentResponse.toolCalls) {
+                        if (config.onToolExecuting) config.onToolExecuting(toolCall);
+
+                        if (toolCall.function.name === 'reportFound' || toolCall.function.name === 'reportNotFound') {
+                            shouldTerminate = true;
+                            agentTerminatedNormally = true;
+                            bugFound = toolCall.function.name === 'reportFound';
+                            try {
+                                const args = JSON.parse(toolCall.function.arguments);
+                                terminationReason = args.reason || `Bug reported as ${bugFound ? 'FOUND' : 'NOT FOUND'} by agent.`;
+                            } catch {
+                                terminationReason = `Bug reported as ${bugFound ? 'FOUND' : 'NOT FOUND'} by agent.`;
+                            }
+
+                            console.log(`${LOG_PREFIX} Agent reported bug ${bugFound ? 'FOUND' : 'NOT FOUND'}. Reason: ${terminationReason}`);
+                            terminationToolResult = {
+                                tool_call_id: toolCall.id,
+                                success: true,
+                                result: terminationReason
+                            };
+                            currentToolResults.push(terminationToolResult);
+                            break;
+                        }
+
+                        const executionResult = await executeTool(toolCall, page!);
+                        currentToolResults.push(executionResult);
+
+                        if (config.onToolExecuted) config.onToolExecuted(executionResult);
+
+                        if (!executionResult.success) {
+                            console.warn(`${LOG_PREFIX} Tool execution failed: ${executionResult.error}`);
+                        } else {
+                            console.log(`${LOG_PREFIX} Tool executed successfully.`);
+                        }
+                        await page.waitForTimeout(100);
+                    }
+                    currentLogEntry.toolResults = currentToolResults;
+
+                } else {
+                    console.log(`${LOG_PREFIX} Agent provided a response but requested no tools this turn.`);
+                    // No tool results to log for this loop
+                }
+
+                // 5. Log and Check Termination
+                await appendToJsonLog(currentLogEntry, logFilePath);
+
+                if (shouldTerminate) {
+                    finalResult = {
+                        success: true,
+                        reproducible: bugFound,
+                        message: terminationReason,
+                        history: [],
+                        error: undefined
+                    };
+                    break;
+                }
+
+            } catch (loopError: any) {
+                console.error(`${LOG_PREFIX} Error within agent loop ${loopCounter}:`, loopError);
+                currentLogEntry.error = `Loop Error: ${loopError.message}`;
+                await appendToJsonLog(currentLogEntry, logFilePath);
+                throw loopError;
             }
 
-            // Log agent's reasoning/thought process if available
-            if (agentGuess.content) {
-                const agentThought = `[Agent] Agent Thought: ${agentGuess.content}`;
-                console.log(agentThought);
-                history.push(agentThought); // Add thought to history
-            } else {
-                console.log("[Agent] Agent did not provide a thought for this step.");
-                history.push("[Agent] Agent provided action without explicit thought.");
-            }
-
-            // Execute the action proposed by the agent
-            console.log("[Agent] Executing agent's suggested action(s)...");
-            const executionErrors = await executeAgentGuess(agentGuess, page);
-
-            if (executionErrors && executionErrors.length > 0) {
-                console.warn("[Agent] Errors during action execution:", executionErrors);
-                errors.push(...executionErrors);
-                history.push(`[Agent] Action Execution Errors: ${executionErrors.join(', ')}`);
-            } else {
-                console.log("[Agent] Action(s) executed successfully.");
-                history.push(`[Agent] Action Executed`);
-            }
-        } // --- End Agent Interaction Loop ---
-
-        if (loopCounter >= MAX_LOOPS) {
-            console.warn(`[Agent] Reached maximum loop limit (${MAX_LOOPS}). Terminating loop.`);
-            errors.push("[Agent] Error: Reached maximum interaction limit.");
-            agentTerminated = true;
-            reproducible = false;
-            history.push("[Agent] Reached maximum interaction limit.");
         }
 
-    } catch (error) {
-        console.error("\n[Agent] Critical Error during Agent Execution");
-        console.error("[Agent] Error Details:", error.stack || error);
-        errors.push(`[Agent] Critical Error: ${error.message || error}`);
-        agentTerminated = false;
-        reproducible = false; // Cannot assume reproducible if it crashed
+        if (!agentTerminatedNormally) {
+            let terminationMessage = "";
+            if (loopCounter >= config.maxLoops) {
+                terminationMessage = `Reached maximum loop limit (${config.maxLoops}). Terminating.`;
+                console.warn(`${LOG_PREFIX} ${terminationMessage}`);
+                finalResult = {
+                    success: false,
+                    reproducible: null,
+                    message: terminationMessage,
+                    history: [],
+                    error: terminationMessage
+                };
+            } else {
+                terminationMessage = "Loop terminated unexpectedly.";
+                console.error(`${LOG_PREFIX} ${terminationMessage}`);
+                finalResult = {
+                    success: false,
+                    reproducible: null,
+                    message: terminationMessage,
+                    history: [],
+                    error: terminationMessage
+                };
+            }
+            await appendToJsonLog({
+                loop: loopCounter + 1, // After last loop
+                timestamp: new Date().toISOString(),
+                error: terminationMessage,
+                agentInputSummary: "Loop termination condition met."
+            }, logFilePath);
+        }
+
+
+    } catch (error: any) {
+        console.error(`\n${LOG_PREFIX} !!! Critical Error during Agent Execution !!!`);
+        console.error(`${LOG_PREFIX} Error Details:`, error.stack || error);
+        const errorMessage = `Critical Error: ${error.message || error}`;
+        await appendToJsonLog({
+            loop: -1, // Indicate critical failure
+            timestamp: new Date().toISOString(),
+            error: errorMessage,
+            agentInputSummary: "Critical error caused process termination."
+        }, logFilePath);
+        finalResult = {
+            success: false,
+            reproducible: null,
+            message: "Process failed due to a critical error.",
+            history: [],
+            error: errorMessage
+        };
     } finally {
+        console.log(`${LOG_PREFIX} Cleaning up resources...`);
+        if (page && !page.isClosed()) {
+            try {
+                await page.close();
+            } catch (e) {
+                console.warn(`${LOG_PREFIX} Error closing page:`, e);
+            }
+        }
+        if (context) {
+            try {
+                await context.close();
+            } catch (e) {
+                console.warn(`${LOG_PREFIX} Error closing context:`, e);
+            }
+        }
         if (browser) {
-            console.log("[Agent] Closing browser...");
             try {
                 await browser.close();
-                console.log("[Agent] Browser closed.");
-            } catch (closeError) {
-                console.error("[Agent] Error closing browser:", closeError.message);
+                console.log(`${LOG_PREFIX} Browser closed.`);
+            } catch (e: any) {
+                console.error(`${LOG_PREFIX} Error closing browser:`, e.message);
             }
         } else {
-            console.log("[Agent] Browser was not launched or already closed.");
+            console.log(`${LOG_PREFIX} Browser was not launched or already closed.`);
         }
     }
 
-    // --- Results ---
-    console.log("\n[Agent] --- Execution Summary ---");
-    console.log(`[Agent] Normal Termination: ${agentTerminated}`);
-    console.log(`[Agent] Is bug reproducible (according to agent): ${reproducible}`);
-    if (errors.length > 0) {
-        console.log("[Agent] Errors Encountered:", errors);
-    } else {
-        console.log("[Agent] No errors reported during execution.");
+    console.log(`\n${LOG_PREFIX} --- Execution Summary ---`);
+    console.log(`${LOG_PREFIX} Process Success: ${finalResult.success}`);
+    console.log(`${LOG_PREFIX} Bug Reproducible: ${finalResult.reproducible === null ? 'Unknown' : finalResult.reproducible}`);
+    console.log(`${LOG_PREFIX} Final Message: ${finalResult.message}`);
+    if (finalResult.error) {
+        console.error(`${LOG_PREFIX} Critical Error Encountered: ${finalResult.error}`);
     }
-    console.log("[Agent] Execution History Steps:", history.length);
-    // console.log("[Agent] Full History:", history); // Uncomment to see full history log
+    console.log(`${LOG_PREFIX} Detailed interaction log saved to: ${logFilePath}`);
+    try {
+        const logData = await fs.readFile(logFilePath, 'utf-8');
+        finalResult.history = JSON.parse(logData);
+    } catch (e) {
+        console.warn(`${LOG_PREFIX} Could not read final log file to populate history result field.`);
+        finalResult.history = []; // Ensure it's an empty array if read fails
+    }
 
-    return {
-        reproducible: reproducible, // Define success more strictly? Or rely solely on agent's claim? Let's use the agent's claim for now.
-        errors: errors,
-        history: history
-    };
+    return finalResult;
 }
