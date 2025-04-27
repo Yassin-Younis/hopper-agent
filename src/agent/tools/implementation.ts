@@ -11,6 +11,11 @@ export interface ToolExecutionResult {
     error?: string;
 }
 
+export interface CapturedData {
+    consoleMessages: { type: string; text: string; timestamp: number }[];
+    networkEvents: { url: string; method: string; status: number | null; resourceType: string; failed: boolean; timestamp: number }[];
+}
+
 const getSelector = (id: string | number): string => `[${INTERACTIVE_ID_KEY}="${id}"]`;
 
 async function tool_noop(args: any, page: Page): Promise<string> {
@@ -136,10 +141,101 @@ async function tool_reportNotFound(args: any, page: Page): Promise<string> {
     return `Bug reported as NOT FOUND. Reason: ${reason}`;
 }
 
+async function tool_check_browser_console(args: any, page: Page, context: CapturedData): Promise<string> {
+    const { log_types = ["error", "warning", "log"], message_contains, max_logs = 20 } = args;
+    const lowerCaseTypes = log_types.map((t: string) => t.toLowerCase());
+
+    const filteredMessages = context.consoleMessages
+        .filter(msg => lowerCaseTypes.includes(msg.type.toLowerCase()))
+        .filter(msg => !message_contains || msg.text.toLowerCase().includes(message_contains.toLowerCase()))
+        .slice(-max_logs); // Get the most recent matching logs
+
+    if (filteredMessages.length === 0) {
+        return "No matching console logs found.";
+    }
+
+    const formattedLogs = filteredMessages.map(msg => `[${msg.type.toUpperCase()}] ${msg.text.substring(0, 200)}${msg.text.length > 200 ? '...' : ''}`).join('\n');
+    return `Found ${filteredMessages.length} matching console logs (most recent):\n${formattedLogs}`;
+}
+
+async function tool_check_network_requests(args: any, page: Page, context: CapturedData): Promise<string> {
+    const { url_contains, status_codes, methods, resource_types, include_failed = true, max_requests = 20 } = args;
+    const lowerCaseMethods = methods?.map((m: string) => m.toUpperCase());
+    const lowerCaseResourceTypes = resource_types?.map((rt: string) => rt.toLowerCase());
+
+    const filteredEvents = context.networkEvents
+        .filter(evt => !url_contains || evt.url.toLowerCase().includes(url_contains.toLowerCase()))
+        .filter(evt => !status_codes || (evt.status !== null && status_codes.includes(evt.status)))
+        .filter(evt => !methods || lowerCaseMethods.includes(evt.method.toUpperCase()))
+        .filter(evt => !resource_types || lowerCaseResourceTypes.includes(evt.resourceType.toLowerCase()))
+        .filter(evt => include_failed || !evt.failed) // Include failed requests if requested or default
+        .slice(-max_requests); // Get the most recent matching requests
+
+    if (filteredEvents.length === 0) {
+        return "No matching network requests found.";
+    }
+
+    const formattedRequests = filteredEvents.map(evt =>
+        `${evt.method.toUpperCase()} ${evt.url} - Status: ${evt.failed ? 'FAILED' : (evt.status ?? 'N/A')} (${evt.resourceType})`
+    ).join('\n');
+    return `Found ${filteredEvents.length} matching network requests (most recent):\n${formattedRequests}`;
+}
+
+
+async function tool_inspect_dom_element(args: any, page: Page, context: CapturedData): Promise<string> {
+    const { selector, attributes = [], get_text_content = true, get_inner_html = false } = args;
+
+    if (!selector) {
+        throw new Error("Missing required 'selector' parameter for inspect_dom_element.");
+    }
+
+    try {
+        const element = page.locator(selector).first(); // Target the first matching element
+        const count = await page.locator(selector).count();
+
+        if (count === 0) {
+            return `No element found matching selector: "${selector}"`;
+        }
+
+        let details: string[] = [`Found ${count} element(s) matching selector "${selector}". Inspecting the first:`];
+
+        // Get Attributes
+        if (attributes.length > 0) {
+            for (const attr of attributes) {
+                const value = await element.getAttribute(attr);
+                details.push(`  - Attribute '${attr}': ${value === null ? '(not set)' : `"${value}"`}`);
+            }
+        } else {
+            // Maybe get common default attributes if none specified? Or just skip. Skip for now.
+        }
+
+        // Get Text Content
+        if (get_text_content) {
+            const text = await element.textContent() || "";
+            details.push(`  - Text Content: "${text.trim().substring(0, 200)}${text.length > 200 ? '...' : ''}"`);
+        }
+
+        // Get Inner HTML (use carefully)
+        if (get_inner_html) {
+            const html = await element.innerHTML();
+            details.push(`  - Inner HTML: "${html.substring(0, 300)}${html.length > 300 ? '...' : ''}"`);
+        }
+
+        return details.join('\n');
+
+    } catch (error: any) {
+        if (error.message.includes('Timeout')) {
+            return `Timeout waiting for element matching selector: "${selector}"`;
+        }
+        console.error(`${LOG_PREFIX} Error inspecting DOM element with selector "${selector}":`, error);
+        throw new Error(`Failed to inspect DOM element: ${error.message}`);
+    }
+}
+
 
 // --- Tool Function Mapping ---
 // Map tool names to their corresponding implementation functions
-const toolImplementations: Record<string, (args: any, page: Page) => Promise<string>> = {
+const toolImplementations: Record<string, (args: any, page: Page, context: CapturedData) => Promise<string>> = {
     "noop": tool_noop,
     "send_msg_to_user": tool_send_msg_to_user,
     "scroll": tool_scroll,
@@ -158,6 +254,9 @@ const toolImplementations: Record<string, (args: any, page: Page) => Promise<str
     "goto": tool_goto,
     "reportFound": tool_reportFound,
     "reportNotFound": tool_reportNotFound,
+    "check_browser_console": tool_check_browser_console,
+    "check_network_requests": tool_check_network_requests,
+    "inspect_dom_element": tool_inspect_dom_element,
 };
 
 // --- Main Executor ---
@@ -168,7 +267,7 @@ const toolImplementations: Record<string, (args: any, page: Page) => Promise<str
  * @param page The Playwright Page object to interact with.
  * @returns A Promise resolving to a ToolExecutionResult object.
  */
-export async function executeTool(toolCall: ChatCompletionMessageToolCall, page: Page): Promise<ToolExecutionResult> {
+export async function executeTool(toolCall: ChatCompletionMessageToolCall, page: Page, capturedData: CapturedData): Promise<ToolExecutionResult> {
     const functionName = toolCall.function.name;
     const toolCallId = toolCall.id;
     let args: any;
@@ -199,7 +298,7 @@ export async function executeTool(toolCall: ChatCompletionMessageToolCall, page:
     }
 
     try {
-        const resultMessage = await toolFunction(args, page);
+        const resultMessage = await toolFunction(args, page, capturedData);
         return {
             tool_call_id: toolCallId,
             success: true,

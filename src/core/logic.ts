@@ -1,17 +1,17 @@
-import playwright, {Browser, Page, BrowserContext} from 'playwright';
+import playwright, { Browser, Page, BrowserContext, ConsoleMessage, Request, Response } from 'playwright';
 import {promises as fs} from 'fs';
 import path from 'path';
 import {Agent, AgentConfig, AgentResponse} from '../agent';
 import {getSystemPrompt} from '../agent/prompts';
 import {tools} from '../agent/tools/definition';
-import {executeTool, ToolExecutionResult} from '../agent/tools/implementation';
+import {CapturedData, executeTool, ToolExecutionResult} from '../agent/tools/implementation';
 import {
     DEFAULT_SCREENSHOT_PATH,
     DEFAULT_WAIT_TIME_MS,
     MAX_AGENT_LOOPS,
     DEFAULT_NAVIGATION_TIMEOUT_MS,
     LOG_PREFIX,
-    DEFAULT_MODEL
+    DEFAULT_MODEL, MAX_NETWORK_EVENTS_TO_KEEP, MAX_CONSOLE_LOGS_TO_KEEP
 } from '../common/constants';
 import {extractElementsInfo, injectLabelsScript} from "../browser/labels.ts";
 
@@ -132,6 +132,8 @@ export async function reproduceBug(
     let browser: Browser | null = null;
     let context: BrowserContext | null = null;
     let page: Page | null = null;
+    const capturedConsoleMessages: CapturedData['consoleMessages'] = [];
+    const capturedNetworkEvents: CapturedData['networkEvents'] = [];
     let finalResult: ReproductionResult = {
         success: false,
         reproducible: null,
@@ -157,16 +159,71 @@ export async function reproduceBug(
         page = await context.newPage();
         console.log(`${LOG_PREFIX} Browser launched, page created.`);
         await page.addInitScript(injectLabelsScript)
-        // page.on('load', async (loadedPage) => {
-        //
-        //     console.log(`[Agent] Page loaded: ${loadedPage.url()}. Injecting accessibility labels.`);
-        //     try {
-        //         await loadedPage.evaluate(injectLabels);
-        //         console.log(`[Agent] Labels injected on ${loadedPage.url()}`);
-        //     } catch (injectionError) {
-        //         console.error("[Agent] Error injecting labels:", injectionError.message);
-        //     }
-        // });
+        // --- SETUP LISTENERS --- <<< ADD THIS SECTION
+        console.log(`${LOG_PREFIX} Setting up event listeners for console and network...`);
+
+
+        // --- Define Listener Functions --- <<< NEW SECTION
+        const handleConsole = (msg: ConsoleMessage) => {
+            const type = msg.type();
+            const text = msg.text();
+            if (!text.startsWith('XHR finished loading')) { // Optional basic filter
+                capturedConsoleMessages.push({ type, text, timestamp: Date.now() });
+                if (capturedConsoleMessages.length > MAX_CONSOLE_LOGS_TO_KEEP) {
+                    capturedConsoleMessages.shift();
+                }
+            }
+        };
+
+        const handleRequestFinished = async (request: Request) => {
+            try { // Add try-catch as response() can potentially fail
+                const response = await request.response();
+                const method = request.method();
+                const urlValue = request.url();
+                const status = response?.status() ?? null;
+                const resourceType = request.resourceType();
+
+                capturedNetworkEvents.push({
+                    url: urlValue, method, status, resourceType,
+                    failed: status === null || (status >= 400),
+                    timestamp: Date.now()
+                });
+                if (capturedNetworkEvents.length > MAX_NETWORK_EVENTS_TO_KEEP) {
+                    capturedNetworkEvents.shift();
+                }
+            } catch (error) {
+                console.warn(`${LOG_PREFIX} Error processing requestfinished event for ${request.url()}:`, error);
+            }
+        };
+        const handleRequestFailed = (request: Request) => {
+            const method = request.method();
+            const urlValue = request.url();
+            const resourceType = request.resourceType();
+            const failureText = request.failure()?.errorText || 'Unknown network failure';
+
+            capturedNetworkEvents.push({
+                url: urlValue, method,
+                status: null,
+                resourceType,
+                failed: true,
+                timestamp: Date.now()
+            });
+            console.warn(`${LOG_PREFIX} Network request failed: ${method} ${urlValue} - ${failureText}`);
+            if (capturedNetworkEvents.length > MAX_NETWORK_EVENTS_TO_KEEP) {
+                capturedNetworkEvents.shift();
+            }
+        };
+        // Console Listener
+
+        page.on('console', handleConsole); // Attach console listener
+
+        if (context) {
+            context.on('requestfinished', handleRequestFinished); // Attach network listeners
+            context.on('requestfailed', handleRequestFailed);
+        } else {
+            console.error(`${LOG_PREFIX} Browser context not created, cannot attach network listeners.`);
+            // Handle error
+        }
 
 
         console.log(`${LOG_PREFIX} Label injection script added.`);
@@ -271,7 +328,13 @@ ${elementsInfo.length > 0 ? elementsInfo.join('\n') : 'No interactive elements d
                             break;
                         }
 
-                        const executionResult = await executeTool(toolCall, page!);
+                        // --- EXECUTE TOOL (PASSING CAPTURED DATA) --- <<< MODIFY THIS CALL
+                        const currentCapturedData: CapturedData = {
+                            consoleMessages: [...capturedConsoleMessages], // Pass copies
+                            networkEvents: [...capturedNetworkEvents]
+                        };
+
+                        const executionResult = await executeTool(toolCall, page!, currentCapturedData);
                         currentToolResults.push(executionResult);
 
                         if (config.onToolExecuted) config.onToolExecuted(executionResult);

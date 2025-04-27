@@ -176,6 +176,108 @@ export const tools: ChatCompletionTool[] = [{
 
     },
     {
+        type: "function",
+        function: {
+            name: "check_browser_console",
+            description: "Retrieves recent browser console logs. Useful for checking JavaScript errors, warnings, or specific debug messages.",
+            parameters: {
+                type: "object",
+                properties: {
+                    log_types: {
+                        type: "array",
+                        items: { type: "string", enum: ["error", "warning", "log", "info", "debug"] },
+                        description: "Optional. Filter logs by type (e.g., ['error', 'warning']). Defaults to ['error', 'warning', 'log'].",
+                        default: ["error", "warning", "log"]
+                    },
+                    message_contains: {
+                        type: "string",
+                        description: "Optional. Filter logs to include only those containing this specific text substring."
+                    },
+                    max_logs: {
+                        type: "number",
+                        description: "Optional. Maximum number of matching log entries to return.",
+                        default: 20
+                    }
+                },
+                required: [] // All parameters are optional
+            }
+        }
+    },
+    {
+        type: "function",
+        function: {
+            name: "check_network_requests",
+            description: "Retrieves information about recent network requests made by the browser page. Useful for checking API call failures (4xx, 5xx status codes), redirects, or specific resource loading.",
+            parameters: {
+                type: "object",
+                properties: {
+                    url_contains: {
+                        type: "string",
+                        description: "Optional. Filter requests where the URL contains this substring."
+                    },
+                    status_codes: {
+                        type: "array",
+                        items: { type: "number" },
+                        description: "Optional. Filter requests by specific HTTP status codes (e.g., [404, 500, 503])."
+                    },
+                    methods: {
+                        type: "array",
+                        items: { type: "string", enum: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS", "HEAD"] },
+                        description: "Optional. Filter requests by HTTP method (e.g., ['POST', 'PUT'])."
+                    },
+                    resource_types: {
+                        type: "array",
+                        items: { type: "string", enum: ["document", "stylesheet", "image", "media", "font", "script", "texttrack", "xhr", "fetch", "eventsource", "websocket", "manifest", "signedexchange", "ping", "cspviolationreport", "preflight", "other"] },
+                        description: "Optional. Filter requests by their resource type (e.g., ['xhr', 'fetch'] for API calls)."
+                    },
+                    include_failed: {
+                        type: "boolean",
+                        description: "Optional. If true, also includes requests that failed at the network level (e.g., DNS error, connection refused), not just HTTP errors. Defaults to true.",
+                        default: true
+                    },
+                    max_requests: {
+                        type: "number",
+                        description: "Optional. Maximum number of matching request entries to return.",
+                        default: 20
+                    }
+                },
+                required: [] // All parameters are optional
+            }
+        }
+    },
+    {
+        type: "function",
+        function: {
+            name: "inspect_dom_element",
+            description: "Inspects a specific DOM element using a CSS selector to retrieve its details like attributes, text content, or inner HTML. Useful when element labels are missing or insufficient, or to check specific properties.",
+            parameters: {
+                type: "object",
+                properties: {
+                    selector: {
+                        type: "string",
+                        description: "Required. The CSS selector to locate the element (e.g., '#myId', '.my-class', 'div[data-testid=\"value\"]'). Use standard CSS selectors, NOT the agent's interactive IDs like '[12]'."
+                    },
+                    attributes: {
+                        type: "array",
+                        items: { type: "string" },
+                        description: "Optional. An array of specific attribute names to retrieve values for (e.g., ['class', 'style', 'data-value'])."
+                    },
+                    get_text_content: {
+                        type: "boolean",
+                        description: "Optional. Set to true to retrieve the element's visible text content. Defaults to true.",
+                        default: true
+                    },
+                    get_inner_html: {
+                        type: "boolean",
+                        description: "Optional. Set to true to retrieve the element's inner HTML content. Use with caution, can be large. Defaults to false.",
+                        default: false
+                    }
+                },
+                required: ["selector"]
+            }
+        }
+    },
+    {
         type: "function", function: {
             name: "reportFound", description: "Called when the bug is found", parameters: {
                 type: "object", properties: {}

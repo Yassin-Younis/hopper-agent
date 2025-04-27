@@ -6,3 +6,5 @@ export const DEFAULT_ACTION_TIMEOUT_MS = 5000; // Max time for a single Playwrig
 export const DEFAULT_NAVIGATION_TIMEOUT_MS = 30000; // Max time for page navigation
 export const MAX_AGENT_LOOPS = 30; // Prevent infinite loops
 export const LOG_PREFIX = '[BugReproAgent]'; // Consistent logging prefix
+export const MAX_CONSOLE_LOGS_TO_KEEP = 100;
+export const MAX_NETWORK_EVENTS_TO_KEEP = 150;
