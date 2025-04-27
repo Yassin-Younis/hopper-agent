@@ -1,0 +1,393 @@
+[
+
+  {
+    "id": 1,
+    "Git Link": "https://github.com/Yassin-Younis/calorie-counter.git",
+    "Buggy Commit Hash": "527fda5a",
+    "Difficulty": "Easy",
+    "Fixed Commit Hash": "a6678f38",
+    "Steps to Run": [
+      "npm install",
+      "npm run dev"
+    ],
+    "Bug Report": "### Bug Report #1: Incorrect Calorie Calculation in Food Database\n**Severity**: High\n**Component**: Food Database Service\n**Description**: The calorie calculation for food items is incorrect due to a hardcoded multiplication factor of 1.5 instead of using the actual quantity parameter.\n**Steps to Reproduce (S2R)**:\n1. Navigate to the \"Add Meal\" page\n2. Enter a meal name (e.g., \"Chicken Salad\")\n3. Add an ingredient (e.g., \"Chicken\" with quantity 2)\n4. Click \"Estimate Calories\"\n5. Observe that the calorie count is 300 (200 * 1.5) instead of the expected 400 (200 * 2)",
+    "Bug Report Images": [],
+    "Deployment Link": "http://localhost:9002/"
+  },
+  {
+    "id": 2,
+    "Git Link": "https://github.com/Yassin-Younis/calorie-counter.git",
+    "Buggy Commit Hash": "527fda5a",
+    "Difficulty": "Easy",
+    "Fixed Commit Hash": "a6678f38",
+    "Steps to Run": [
+      "npm install",
+      "npm run dev"
+    ],
+    "Bug Report": "### Bug Report #2: Incorrect Daily Summary Totals\n**Severity**: High\n**Component**: Daily Summary\n**Description**: The daily summary incorrectly adds 100 extra calories to the total and doubles the protein count.\n**Steps to Reproduce (S2R)**:\n1. Add multiple meals to your daily summary\n2. Navigate to the \"Daily Summary\" page\n3. Observe that:\n   - Total calories are 100 more than the sum of individual meal calories\n   - Total protein is double the sum of individual meal protein values\n   - Other macros (carbs and fat) are calculated correctly",
+    "Bug Report Images": [],
+    "Deployment Link": "http://localhost:9002/"
+  },
+  {
+    "id": 3,
+    "Git Link": "https://github.com/Yassin-Younis/calorie-counter.git",
+    "Buggy Commit Hash": "527fda5a",
+    "Difficulty": "Easy",
+    "Fixed Commit Hash": "a6678f38",
+    "Steps to Run": [
+      "npm install",
+      "npm run dev"
+    ],
+    "Bug Report": "### Bug Report #3: Incorrect Meal Suggestion Targets\n**Severity**: Medium\n**Component**: Meal Suggestion\n**Description**: The meal suggestion feature incorrectly divides the target calories by 2 before making the API call.\n**Steps to Reproduce (S2R)**:\n1. Navigate to the \"Meal Suggestion\" page\n2. Enter a target calorie goal (e.g., 2000)\n3. Enter other macro targets\n4. Click \"Suggest Meal\"\n5. Observe that the suggested meals are based on 1000 calories (2000/2) instead of the intended 2000 calories\n",
+    "Bug Report Images": [],
+    "Deployment Link": "http://localhost:9002/"
+  },
+  {
+    "id": 1,
+    "Git Link": "https://github.com/Yassin-Younis/linkedup.git",
+    "Buggy Commit Hash": "3706daa2",
+    "Difficulty": "Easy",
+    "Fixed Commit Hash": "91f543a9",
+    "Steps to Run": [
+      "npm install",
+      "npm run dev"
+    ],
+    "Bug Report": "Description: User passwords are stored in plain text and are visible in the browser's local storage, posing a security risk.\nSteps to Reproduce:\n1. Create a new account\n2. Open browser dev tools\n3. Go to Application > Local Storage\n4. Observe the plain text password in the stored user data",
+    "Bug Report Images": [],
+    "Deployment Link": "http://localhost:9002/"
+  },
+  {
+    "id": 2,
+    "Git Link": "https://github.com/Yassin-Younis/linkedup.git",
+    "Buggy Commit Hash": "3706daa2",
+    "Difficulty": "Easy",
+    "Fixed Commit Hash": "91f543a9",
+    "Steps to Run": [
+      "npm install",
+      "npm run dev"
+    ],
+    "Bug Report": "Description: Post timestamps are displayed in the wrong timezone, causing posts to show incorrect times.\nSteps to Reproduce:\n1. Create a new post\n2. Observe that the timestamp shown is incorrect compared to the local time",
+    "Bug Report Images": [],
+    "Deployment Link": "http://localhost:9002/"
+  },
+  {
+    "id": 3,
+    "Git Link": "https://github.com/Yassin-Younis/linkedup.git",
+    "Buggy Commit Hash": "3706daa2",
+    "Difficulty": "Easy",
+    "Fixed Commit Hash": "91f543a9",
+    "Steps to Run": [
+      "npm install",
+      "npm run dev"
+    ],
+    "Bug Report": "Description: Network connections are not properly validated, allowing users to connect with non-existent usernames.\nSteps to Reproduce:\n1. Go to My Network page\n2. Enter a non-existent username\n3. Click Add Connection\n4. Observe that the connection is added without validation",
+    "Bug Report Images": [],
+    "Deployment Link": "http://localhost:9002/"
+  },
+  {
+    "id": 4,
+    "Git Link": "https://github.com/Yassin-Younis/linkedup.git",
+    "Buggy Commit Hash": "3706daa2",
+    "Difficulty": "Medium",
+    "Fixed Commit Hash": "91f543a9",
+    "Steps to Run": [
+      "npm install",
+      "npm run dev"
+    ],
+    "Bug Report": "Description: Post likes counter is not properly synchronized between users, causing inconsistent like counts.\nSteps to Reproduce:\n1. Create a post\n2. Like the post from multiple accounts\n3. Observe that like counts are inconsistent between different users viewing the same post",
+    "Bug Report Images": [],
+    "Deployment Link": "http://localhost:9002/"
+  },
+  {
+    "id": 5,
+    "Git Link": "https://github.com/Yassin-Younis/linkedup.git",
+    "Buggy Commit Hash": "3706daa2",
+    "Difficulty": "Medium",
+    "Fixed Commit Hash": "91f543a9",
+    "Steps to Run": [
+      "npm install",
+      "npm run dev"
+    ],
+    "Bug Report": "Description: User sessions persist indefinitely in local storage, even after browser restart, without proper expiration.\nSteps to Reproduce:\n1. Log in to the application\n2. Close the browser\n3. Reopen the browser\n4. Observe that the user is still logged in without re-authentication",
+    "Bug Report Images": [],
+    "Deployment Link": "http://localhost:9002/"
+  },
+  {
+    "id": 6,
+    "Git Link": "https://github.com/Yassin-Younis/linkedup.git",
+    "Buggy Commit Hash": "3706daa2",
+    "Difficulty": "Hard",
+    "Fixed Commit Hash": "91f543a9",
+    "Steps to Run": [
+      "npm install",
+      "npm run dev"
+    ],
+    "Bug Report": "Description: Race condition in post creation causes duplicate posts when submitting rapidly.\nSteps to Reproduce:\n1. Rapidly click the post submit button multiple times\n2. Observe that duplicate posts are created due to race condition in post submission",
+    "Bug Report Images": [],
+    "Deployment Link": "http://localhost:9002/"
+  },
+  {
+    "id": 7,
+    "Git Link": "https://github.com/Yassin-Younis/linkedup.git",
+    "Buggy Commit Hash": "29634661",
+    "Difficulty": "Hard",
+    "Fixed Commit Hash": "91f543a9",
+    "Steps to Run": [
+      "npm install",
+      "npm run dev"
+    ],
+    "Bug Report": "I cant logout",
+    "Bug Report Images": [],
+    "Deployment Link": "http://localhost:9002/"
+  },
+  {
+    "id": 1,
+    "Git Link": "https://github.com/Yassin-Younis/notes.git",
+    "Buggy Commit Hash": "2f27ccac",
+    "Difficulty": "Easy",
+    "Fixed Commit Hash": "c0ce110e",
+    "Steps to Run": [
+      "npm install",
+      "npm run dev"
+    ],
+    "Bug Report": "### Bug 1: Date Timezone Issue\n**Description:** Notes' creation and update timestamps are incorrectly set to midnight (00:00:00) in the local timezone, causing all notes to appear as if they were created at the start of the day.\n**Steps to Reproduce:**\n1. Create a new note\n2. Observe the creation timestamp\n3. Refresh the page\n4. Notice that the timestamp has been reset to midnight\n",
+    "Bug Report Images": [],
+    "Deployment Link": "http://localhost:9002/"
+  },
+  {
+    "id": 2,
+    "Git Link": "https://github.com/Yassin-Younis/notes.git",
+    "Buggy Commit Hash": "2f27ccac",
+    "Difficulty": "Medium",
+    "Fixed Commit Hash": "c0ce110e",
+    "Steps to Run": [
+      "npm install",
+      "npm run dev"
+    ],
+    "Bug Report": "### Bug 2: Race Condition in Note Saving\n**Description:** Notes are saved to localStorage with a 100ms delay, which can cause data loss if multiple save operations occur in quick succession.\n**Steps to Reproduce:**\n1. Create a new note\n2. Quickly create another note before the first one finishes saving\n3. Refresh the page\n4. Observe that one of the notes may be missing\n",
+    "Bug Report Images": [],
+    "Deployment Link": "http://localhost:9002/"
+  },
+  {
+    "id": 3,
+    "Git Link": "https://github.com/Yassin-Younis/notes.git",
+    "Buggy Commit Hash": "2f27ccac",
+    "Difficulty": "Easy",
+    "Fixed Commit Hash": "c0ce110e",
+    "Steps to Run": [
+      "npm install",
+      "npm run dev"
+    ],
+    "Bug Report": "### Bug 3: Duplicate ID Generation\n**Description:** Notes use a random string generator instead of UUID, which can potentially create duplicate IDs.\n**Steps to Reproduce:**\n1. Create multiple notes in quick succession\n2. Export the notes to JSON\n3. Check for duplicate IDs in the exported file",
+    "Bug Report Images": [],
+    "Deployment Link": "http://localhost:9002/"
+  },
+  {
+    "id": 4,
+    "Git Link": "https://github.com/Yassin-Younis/notes.git",
+    "Buggy Commit Hash": "2f27ccac",
+    "Difficulty": "Easy",
+    "Fixed Commit Hash": "c0ce110e",
+    "Steps to Run": [
+      "npm install",
+      "npm run dev"
+    ],
+    "Bug Report": "### Bug 4: Content Truncation\n**Description:** Note content is silently truncated to 1000 characters when updating.\n**Steps to Reproduce:**\n1. Create a note with content longer than 1000 characters\n2. Save the note\n3. Observe that the content has been truncated",
+    "Bug Report Images": [],
+    "Deployment Link": "http://localhost:9002/"
+  },
+  {
+    "id": 5,
+    "Git Link": "https://github.com/Yassin-Younis/notes.git",
+    "Buggy Commit Hash": "2f27ccac",
+    "Difficulty": "Medium",
+    "Fixed Commit Hash": "c0ce110e",
+    "Steps to Run": [
+      "npm install",
+      "npm run dev"
+    ],
+    "Bug Report": "### Bug 5: Case-Sensitive Tag Comparison\n**Description:** Tag comparison is case-sensitive, allowing duplicate tags with different cases.\n**Steps to Reproduce:**\n1. Add a tag \"Test\" to a note\n2. Try to add the tag \"test\" (lowercase)\n3. Observe that both tags are added despite being the same word",
+    "Bug Report Images": [],
+    "Deployment Link": "http://localhost:9002/"
+  },
+  {
+    "id": 6,
+    "Git Link": "https://github.com/Yassin-Younis/notes.git",
+    "Buggy Commit Hash": "2f27ccac",
+    "Difficulty": "Hard",
+    "Fixed Commit Hash": "c0ce110e",
+    "Steps to Run": [
+      "npm install",
+      "npm run dev"
+    ],
+    "Bug Report": "### Bug 6: Silent Import Validation Failure\n**Description:** Import validation is too permissive, allowing malformed notes to be imported without proper type checking.\n**Steps to Reproduce:**\n1. Create a JSON file with malformed note data (e.g., missing required fields or wrong types)\n2. Import the file\n3. Observe that the application accepts the invalid data without proper validation\n4. Try to use the imported notes and encounter unexpected behavior",
+    "Bug Report Images": [],
+    "Deployment Link": "http://localhost:9002/"
+  },
+  {
+    "id": 1,
+    "Git Link": "https://github.com/Yassin-Younis/formulate.git",
+    "Buggy Commit Hash": "4f9e0377",
+    "Difficulty": "Easy",
+    "Fixed Commit Hash": "13abfa6d",
+    "Steps to Run": [
+      "npm install",
+      "npm run dev"
+    ],
+    "Bug Report": "Description: Form titles are incorrectly truncated to only the first character when saving a new form, despite the validation allowing longer titles.\nSteps to Reproduce:\nClick \"Create Form\" button\nEnter a title with multiple characters (e.g., \"My Test Form\")\nAdd a description\nClick \"Create\"\nObserve that the form is created but the title only shows the first character\n",
+    "Bug Report Images": [],
+    "Deployment Link": "http://localhost:9002/"
+  },
+  {
+    "id": 2,
+    "Git Link": "https://github.com/Yassin-Younis/formulate.git",
+    "Buggy Commit Hash": "4f9e0377",
+    "Difficulty": "Easy",
+    "Fixed Commit Hash": "13abfa6d",
+    "Steps to Run": [
+      "npm install",
+      "npm run dev"
+    ],
+    "Bug Report": "Description: Form IDs are generated based on the current hour instead of using unique timestamps, causing ID collisions when multiple forms are created within the same hour.\nSteps to Reproduce:\nCreate multiple forms within the same hour\nObserve that forms created in the same hour share the same ID",
+    "Bug Report Images": [],
+    "Deployment Link": "http://localhost:9002/"
+  },
+  {
+    "id": 3,
+    "Git Link": "https://github.com/Yassin-Younis/formulate.git",
+    "Buggy Commit Hash": "4f9e0377",
+    "Difficulty": "Easy",
+    "Fixed Commit Hash": "13abfa6d",
+    "Steps to Run": [
+      "npm install",
+      "npm run dev"
+    ],
+    "Bug Report": "Description: Form descriptions are displayed in reverse order, making them unreadable.\nSteps to Reproduce:\nCreate a form with a description\nObserve that the description appears backwards in the form card",
+    "Bug Report Images": [],
+    "Deployment Link": "http://localhost:9002/"
+  },
+  {
+    "id": 4,
+    "Git Link": "https://github.com/Yassin-Younis/formulate.git",
+    "Buggy Commit Hash": "4f9e0377",
+    "Difficulty": "Medium",
+    "Fixed Commit Hash": "13abfa6d",
+    "Steps to Run": [
+      "npm install",
+      "npm run dev"
+    ],
+    "Bug Report": "Description: Form submissions only save the last response for each question, discarding previous responses for the same question.\nSteps to Reproduce:\nSubmit a form multiple times with different answers to the same questions\nView the form results\nObserve that only the most recent response for each question is saved",
+    "Bug Report Images": [],
+    "Deployment Link": "http://localhost:9002/"
+  },
+  {
+    "id": 5,
+    "Git Link": "https://github.com/Yassin-Younis/formulate.git",
+    "Buggy Commit Hash": "4f9e0377",
+    "Difficulty": "Medium",
+    "Fixed Commit Hash": "13abfa6d",
+    "Steps to Run": [
+      "npm install",
+      "npm run dev"
+    ],
+    "Bug Report": "  Description: Forms list only shows forms created in the current hour, hiding all other forms.\n  Steps to Reproduce:\n  Create forms at different hours\n  Refresh the forms page at different hours\n  Observe that only forms created in the current hour are visible,",
+    "Deployment Link": "http://localhost:9002/"
+  },
+  {
+    "id": 6,
+    "Git Link": "https://github.com/Yassin-Younis/formulate.git",
+    "Buggy Commit Hash": "4f9e0377",
+    "Difficulty": "Hard",
+    "Fixed Commit Hash": "13abfa6d",
+    "Steps to Run": [
+      "npm install",
+      "npm run dev"
+    ],
+    "Bug Report": "Description: Form updates are subject to a race condition due to random delays in saving updates.\nSteps to Reproduce:\nRapidly update the same form multiple times\nObserve that some updates may be lost or appear out of order",
+    "Deployment Link": "http://localhost:9002/"
+  },
+  {
+    "id": 1,
+    "Git Link": "https://github.com/Yassin-Younis/flashy.git",
+    "Buggy Commit Hash": "ad07ce2e",
+    "Difficulty": "Easy",
+    "Fixed Commit Hash": "aaca1933",
+    "Steps to Run": [
+      "npm install",
+      "npm run dev"
+    ],
+    "Bug Report": "Description: When creating a new flashcard, the text entered for the \"Front\" of the card is saved in reverse order. The \"Back\" text saves correctly.\nSteps to Reproduce (S2R):\n1. Go to the application.\n2. In the \"Add Flashcard\" section, enter \"Question\" in the \"Front\" input field.\n3. Enter \"Answer\" in the \"Back\" input field.\n4. Click the \"Add Flashcard\" button.\n5. Observe the newly added flashcard in the \"My Flashcards\" list.\n6. Verify the \"Front\" text is displayed as \"noitseuQ\".\n7. Check the console for the message `BUGGY STATE BUG-001 REACHED`.",
+    "Bug Report Images": [],
+    "Deployment Link": "http://localhost:9002/"
+  },
+  {
+    "id": 2,
+    "Git Link": "https://github.com/Yassin-Younis/flashy.git",
+    "Buggy Commit Hash": "ad07ce2e",
+    "Difficulty": "Easy",
+    "Fixed Commit Hash": "aaca1933",
+    "Steps to Run": [
+      "npm install",
+      "npm run dev"
+    ],
+    "Bug Report": "Description: In Study Mode, clicking the \"Previous\" button incorrectly navigates to the *next* flashcard instead of the previous one. The \"Next\" button functions correctly.\nSteps to Reproduce (S2R):\n1. Ensure there are at least 2 flashcards.\n2. Click the \"Start Studying\" button.\n3. Click the \"Next\" button once to advance (if starting at the first card).\n4. Click the \"Previous\" button.\n5. Observe that the displayed card advances to the next card in the sequence instead of going back.\n6. Check the console for the message `BUGGY STATE BUG-002 REACHED`.",
+    "Bug Report Images": [],
+    "Deployment Link": "http://localhost:9002/"
+  },
+  {
+    "id": 3,
+    "Git Link": "https://github.com/Yassin-Younis/flashy.git",
+    "Buggy Commit Hash": "ad07ce2e",
+    "Difficulty": "Easy",
+    "Fixed Commit Hash": "aaca1933",
+    "Steps to Run": [
+      "npm install",
+      "npm run dev"
+    ],
+    "Bug Report": "Description: When attempting to delete any flashcard using its specific \"Delete\" button, the application always deletes the *last* flashcard in the list, regardless of which card's delete button was pressed.\nSteps to Reproduce (S2R):\n1. Ensure there are at least 3 flashcards. Note the content of the first, middle, and last cards.\n2. Click the \"Delete\" button (trash icon) on the *first* flashcard in the list.\n3. Confirm the deletion in the dialog.\n4. Observe that the *last* flashcard in the list has been removed, not the first one.\n5. Check the console for the message `BUGGY STATE BUG-003 REACHED`.",
+    "Bug Report Images": [],
+    "Deployment Link": "http://localhost:9002/"
+  },
+  {
+    "id": 4,
+    "Git Link": "https://github.com/Yassin-Younis/flashy.git",
+    "Buggy Commit Hash": "ad07ce2e",
+    "Difficulty": "Medium",
+    "Fixed Commit Hash": "aaca1933",
+    "Steps to Run": [
+      "npm install",
+      "npm run dev"
+    ],
+    "Bug Report": "Description: When editing an existing flashcard, changes made to the \"Back\" text are not saved. Only changes to the \"Front\" text are persisted. The \"Back\" text reverts to its original value upon saving the edit.\nSteps to Reproduce (S2R):\n1. Ensure there is at least one flashcard (e.g., Front: \"Original Q\", Back: \"Original A\").\n2. Click the \"Edit\" button (pencil icon) on that flashcard.\n3. In the dialog, change the \"Front\" text to \"Updated Q\".\n4. Change the \"Back\" text to \"Updated A\".\n5. Click the \"Save\" button.\n6. Observe the flashcard in the list.\n7. Verify the \"Front\" text is \"Updated Q\" (correct).\n8. Verify the \"Back\" text is still \"Original A\" (incorrect).\n9. Check the console for the message `BUGGY STATE BUG-004 REACHED`.",
+    "Bug Report Images": [],
+    "Deployment Link": "http://localhost:9002/"
+  },
+  {
+    "id": 5,
+    "Git Link": "https://github.com/Yassin-Younis/flashy.git",
+    "Buggy Commit Hash": "ad07ce2e",
+    "Difficulty": "Medium",
+    "Fixed Commit Hash": "aaca1933",
+    "Steps to Run": [
+      "npm install",
+      "npm run dev"
+    ],
+    "Bug Report": "Description: The \"Start Studying\" button is only enabled when there are exactly two (2) flashcards in the list. If there are zero, one, or three or more flashcards, the button is disabled.\nSteps to Reproduce (S2R):\n1. Delete all flashcards or ensure there is only 1 card. Observe the \"Start Studying\" button is disabled.\n2. Add flashcards until there are exactly 2. Observe the \"Start Studying\" button becomes enabled.\n3. Click the \"Start Studying\" button (it should work).\n4. Check the console for the message `BUGGY STATE BUG-005 REACHED`.\n5. Stop studying.\n6. Add a third flashcard. Observe the \"Start Studying\" button becomes disabled again.",
+    "Bug Report Images": [],
+    "Deployment Link": "http://localhost:9002/"
+  },
+  {
+    "id": 6,
+    "Git Link": "https://github.com/Yassin-Younis/flashy.git",
+    "Buggy Commit Hash": "ad07ce2e",
+    "Difficulty": "Hard",
+    "Fixed Commit Hash": "aaca1933",
+    "Steps to Run": [
+      "npm install",
+      "npm run dev"
+    ],
+    "Bug Report": "Description: If the user deletes the flashcard that was last being viewed in Study Mode (specifically the last card in the list due to BUG-003 interaction), and then restarts the study session, the application may crash or exhibit undefined behavior when navigating. This occurs because the study session might restart using an invalid index that wasn't properly reset after the deletion modified the list.\nRevised Steps to Reproduce (S2R):\n1. Ensure there are at least 3 flashcards.\n2. Click \"Start Studying\".\n3. Navigate using \"Next\" until you are viewing the *last* card in the sequence (e.g., card 3/3). Note this index (e.g., index 2).\n4. Click \"Stop Studying\".\n5. Click the \"Delete\" button on *any* card. Confirm deletion. (BUG-003 deletes the last card, which was the one potentially at `currentCardIndex`). Check console for `BUGGY STATE BUG-003 REACHED` and potentially `BUGGY STATE BUG-006 REACHED` (if the check logic ran correctly before deletion).\n6. Click \"Start Studying\" again.\n7. Immediately observe an error (if `currentCardIndex` is now out of bounds for the smaller list) or unexpected behavior/errors upon clicking \"Next\" or \"Previous\", as the study session might be using the invalid old index.",
+    "Bug Report Images": [],
+    "Deployment Link": "http://localhost:9002/"
+  }
+]
