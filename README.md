@@ -1,4 +1,4 @@
-![411fe2e5-9900-42bf-bce4-9f2ab20fe2d3](https://github.com/user-attachments/assets/521a618f-ca0d-4a08-a35c-35c08fe0b1bc)
+![411fe2e5-9900-42bf-bce4-9f2ab20fe2d3 (1)](https://github.com/user-attachments/assets/82d75e7c-9e3b-4ee2-8f78-63e5c16f8a10)
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
