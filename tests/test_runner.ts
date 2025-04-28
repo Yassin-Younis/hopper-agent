@@ -248,7 +248,7 @@ async function runTestSuite() {
                 // Run Agent
                 console.log(`${testCasePrefix} Running agent on buggy version...`);
                 buggyOutcome.agentResult = await reproduceBug(testCase['Deployment Link'], testCase['Bug Report'], {
-                    headless: false,
+                    headless: true,
                     openaiApiKey: apiKey,
                     logFilePath: buggyLogPath,
                     screenshotPath: buggyScreenshotPath,
@@ -291,7 +291,7 @@ async function runTestSuite() {
                 // Run Agent
                 console.log(`${testCasePrefix} Running agent on fixed version...`);
                 fixedOutcome.agentResult = await reproduceBug(testCase['Deployment Link'], testCase['Bug Report'], {
-                    headless: false,
+                    headless: true,
                     maxLoops: 10, // Limit the number of loops to avoid infinite runs
                     openaiApiKey: apiKey,
                     logFilePath: fixedLogPath,
