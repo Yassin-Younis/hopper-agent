@@ -301,6 +301,7 @@ ${elementsInfo.length > 0 ? elementsInfo.join('\n') : 'No interactive elements d
                 let terminationReason = "";
                 let bugFound = false;
                 let terminationToolResult: ToolExecutionResult | undefined = undefined;
+                console.log(agentResponse)
 
                 if (agentResponse.toolCalls && agentResponse.toolCalls.length > 0) {
                     console.log(`${LOG_PREFIX} Processing ${agentResponse.toolCalls.length} tool call(s)...`);

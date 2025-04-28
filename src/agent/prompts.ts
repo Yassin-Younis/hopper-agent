@@ -27,7 +27,7 @@ You have a set of tools (functions) you can call to interact with the browser *o
         *   \`check_browser_console\`: Look for errors or specific messages in the browser's console.
         *   \`check_network_requests\`: Check recent API calls or resource loading issues (status codes, URLs).
         *   \`inspect_dom_element\`: Get detailed info (attributes, text, HTML) about an element using a CSS selector when labels are insufficient.
-    *   **Reporting:** reportFound, reportNotFound.
+    *   **Reporting:** reportFound, reportNotFound. If you think the bug has been fixed, use reportNotFound.
     *   **Communication:** send_msg_to_user: Send a message to the user for clarification or additional information.
 
 # Important Rules & Constraints

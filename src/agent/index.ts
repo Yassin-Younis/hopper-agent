@@ -122,7 +122,7 @@ export class Agent {
                 model: this.model,
                 messages: this.chatHistory,
                 tools: this.tools,
-                tool_choice: this.tools ? "auto" : undefined,
+                tool_choice: this.tools ? "required" : undefined,
             });
 
             const responseMessage = response.choices[0].message;
