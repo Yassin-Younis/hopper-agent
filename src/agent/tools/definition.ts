@@ -37,7 +37,7 @@ export const tools: ChatCompletionTool[] = [{
         name: "fill", description: "Fills an input field with a given value.", parameters: {
             type: "object", properties: {
                 id: {
-                    type: "string", description: "The field's unique identifier."
+                    type: "number", description: "The field's unique identifier."
                 }, value: {
                     type: "string", description: "The value to input."
                 }
@@ -62,7 +62,7 @@ export const tools: ChatCompletionTool[] = [{
     type: "function", function: {
         name: "click", description: "Simulates a mouse click on an element.", parameters: {
             type: "object", properties: {
-                id: {type: "string", description: "The element's unique identifier."}, button: {
+                id: {type: "number", description: "The element's unique identifier."}, button: {
                     type: "string",
                     enum: ["left", "middle", "right"],
                     default: "left",
@@ -79,7 +79,7 @@ export const tools: ChatCompletionTool[] = [{
     type: "function", function: {
         name: "dblclick", description: "Simulates a double-click on an element.", parameters: {
             type: "object", properties: {
-                id: {type: "string", description: "The element's unique identifier."}, button: {
+                id: {type: "number", description: "The element's unique identifier."}, button: {
                     type: "string",
                     enum: ["left", "middle", "right"],
                     default: "left",
@@ -96,7 +96,7 @@ export const tools: ChatCompletionTool[] = [{
     type: "function", function: {
         name: "hover", description: "Moves the mouse cursor over an element.", parameters: {
             type: "object", properties: {
-                id: {type: "string", description: "The element's unique identifier."}
+                id: {type: "number", description: "The element's unique identifier."}
             }, required: ["id"]
         }
     }
@@ -104,7 +104,7 @@ export const tools: ChatCompletionTool[] = [{
     type: "function", function: {
         name: "press", description: "Simulates a key press event on an element.", parameters: {
             type: "object", properties: {
-                id: {type: "string", description: "The element's unique identifier."},
+                id: {type: "number", description: "The element's unique identifier."},
                 key_comb: {type: "string", description: "The key combination to press."}
             }, required: ["id", "key_comb"]
         }
@@ -113,7 +113,7 @@ export const tools: ChatCompletionTool[] = [{
     type: "function", function: {
         name: "focus", description: "Focuses an input field or element.", parameters: {
             type: "object", properties: {
-                id: {type: "string", description: "The element's unique identifier."}
+                id: {type: "number", description: "The element's unique identifier."}
             }, required: ["id"]
         }
     }
@@ -121,7 +121,7 @@ export const tools: ChatCompletionTool[] = [{
     type: "function", function: {
         name: "clear", description: "Clears the contents of an input field.", parameters: {
             type: "object", properties: {
-                id: {type: "string", description: "The element's unique identifier."}
+                id: {type: "number", description: "The element's unique identifier."}
             }, required: ["id"]
         }
     }
@@ -129,8 +129,8 @@ export const tools: ChatCompletionTool[] = [{
     type: "function", function: {
         name: "drag_and_drop", description: "Drags an element and drops it onto another.", parameters: {
             type: "object", properties: {
-                from_id: {type: "string", description: "The element to drag."},
-                to_id: {type: "string", description: "The target drop location."}
+                from_id: {type: "number", description: "The element to drag."},
+                to_id: {type: "number", description: "The target drop location."}
             }, required: ["from_id", "to_id"]
         }
     }
@@ -143,7 +143,7 @@ export const tools: ChatCompletionTool[] = [{
     //         parameters: {
     //             type: "object",
     //             properties: {
-    //                 id: {type: "string", description: "The file input's unique identifier."},
+    //                 id: {type: "number", description: "The file input's unique identifier."},
     //                 file: {
     //                     type: ["string", "array"],
     //                     description: "The file(s) to upload."
