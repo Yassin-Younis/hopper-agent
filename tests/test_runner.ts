@@ -18,14 +18,13 @@ interface TestCase {
     'Steps to Run': string[];
     'Bug Report': string;
     'Deployment Link': string;
-    // Add other fields if needed (e.g., Difficulty)
-    [key: string]: any; // Allow other fields
+    [key: string]: any;
 }
 
 interface RunOutcome {
-    success: boolean; // Did the setup, agent run, and teardown complete without infra errors?
-    agentResult?: ReproductionResult; // Result from reproduceBug
-    error?: string; // Infrastructure/setup error message
+    success: boolean;
+    agentResult?: ReproductionResult;
+    error?: string;
     logPath?: string;
     screenshotPath?: string;
 }
@@ -37,18 +36,14 @@ interface TestResult {
     status: 'PASSED' | 'FAILED' | 'ERROR';
     buggyRun: RunOutcome;
     fixedRun: RunOutcome;
-    errorMessage?: string; // Overall error for this test case
+    errorMessage?: string;
 }
 
-// --- Configuration ---
-const TESTBENCH_PATH = path.resolve('./tests/testbench.json'); // Path to your testbench file
-const BASE_OUTPUT_DIR = path.resolve('./tests/test_run_outputs'); // Main output directory
-const SERVER_STARTUP_TIMEOUT_MS = 20000; // Max time to wait for server (increase if needed)
-const AGENT_MODEL = "gpt-4o"; // Or your preferred model
+const TESTBENCH_PATH = path.resolve('./tests/testbench.json');
+const BASE_OUTPUT_DIR = path.resolve('./tests/test_run_outputs');
+const SERVER_STARTUP_TIMEOUT_MS = 20000;
+const AGENT_MODEL = "gpt-4o";
 
-// --- Helper Functions ---
-
-/** Executes a shell command in a specified directory */
 async function runCommand(command: string, cwd: string, logPrefix: string = '[CMD]'): Promise<{ stdout: string; stderr: string }> {
     console.log(`${logPrefix} Running command: ${command} in ${cwd}`);
     try {
@@ -64,10 +59,7 @@ async function runCommand(command: string, cwd: string, logPrefix: string = '[CM
     }
 }
 
-/** Starts a server process */
 function startServerProcess(steps: string[], cwd: string, logPrefix: string = '[SERVER]'): ChildProcess | null {
-    // Find the command that likely starts the server (e.g., 'npm run dev', 'node server.js')
-    // This assumes the *last* command in 'Steps to Run' is the server start command. Adjust if needed.
     const serverCommand = steps[steps.length - 1];
     if (!serverCommand) {
         console.error(`${logPrefix} No server start command found in steps.`);
@@ -78,8 +70,6 @@ function startServerProcess(steps: string[], cwd: string, logPrefix: string = '[
     const [command, ...args] = serverCommand.split(' ');
 
     try {
-        // Spawn the process. Use 'pipe' to potentially capture output later if needed,
-        // or 'ignore' if output is noisy and not needed.
         const serverProcess = spawn(command, args, {
             cwd,
             stdio: ['ignore', 'pipe', 'pipe'], // Ignore stdin, pipe stdout/stderr
@@ -87,17 +77,12 @@ function startServerProcess(steps: string[], cwd: string, logPrefix: string = '[
             shell: process.platform === 'win32', // Use shell on Windows for npm etc.
         });
 
-        serverProcess.stdout?.on('data', (data) => {
-            // console.log(`${logPrefix} stdout: ${data.toString().trim()}`); // Optional: Log server output
-        });
-
         serverProcess.stderr?.on('data', (data) => {
-            console.warn(`${logPrefix} stderr: ${data.toString().trim()}`); // Log errors from server
+            console.warn(`${logPrefix} stderr: ${data.toString().trim()}`);
         });
 
         serverProcess.on('error', (err) => {
             console.error(`${logPrefix} Failed to start server process:`, err);
-            // Note: This often indicates the command itself failed (e.g., command not found)
         });
 
         serverProcess.on('close', (code, signal) => {
@@ -116,7 +101,6 @@ function startServerProcess(steps: string[], cwd: string, logPrefix: string = '[
     }
 }
 
-/** Stops the server process */
 async function stopServerProcess(serverProcess: ChildProcess | null, logPrefix: string = '[SERVER]'): Promise<void> {
     if (!serverProcess || serverProcess.killed || serverProcess.exitCode !== null) {
         console.log(`${logPrefix} Server process already stopped or not running.`);
@@ -131,37 +115,33 @@ async function stopServerProcess(serverProcess: ChildProcess | null, logPrefix: 
             resolve();
         });
 
-        // Try SIGTERM first (graceful shutdown)
         const killed = serverProcess.kill('SIGTERM');
 
         if (!killed) {
             console.warn(`${logPrefix} Failed to send SIGTERM to PID: ${pid}. Process might already be stopped.`);
-            resolve(); // Resolve if kill signal fails
+            resolve();
             return;
         }
 
-        // Set a timeout to force kill if SIGTERM doesn't work
         const killTimeout = setTimeout(() => {
             if (!serverProcess.killed) {
                 console.warn(`${logPrefix} Server process (PID: ${pid}) did not exit after SIGTERM, sending SIGKILL...`);
-                serverProcess.kill('SIGKILL'); // Force kill
+                serverProcess.kill('SIGKILL');
             }
-        }, 5000); // 5 second timeout for graceful shutdown
+        }, 5000);
 
         serverProcess.on('close', () => {
-            clearTimeout(killTimeout); // Clear the force kill timeout if it closes normally
+            clearTimeout(killTimeout);
         });
     });
 
 }
 
-/** Waits for a specified duration */
 function sleep(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 
-// --- Main Test Suite Runner ---
 async function runTestSuite() {
     console.log("--- Starting Test Suite Runner ---");
     const suiteTimestamp = new Date().toISOString().replace(/[:.]/g, '-');
@@ -169,7 +149,6 @@ async function runTestSuite() {
     const suiteLogDir = path.join(suiteOutputDir, 'logs');
     const suiteScreenshotDir = path.join(suiteOutputDir, 'screenshots');
 
-    // --- API Key Check ---
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {
         console.error("FATAL: OPENAI_API_KEY not found.");
@@ -177,7 +156,6 @@ async function runTestSuite() {
     }
     console.log("OpenAI API Key loaded.");
 
-    // --- Load Testbench ---
     let testCases: TestCase[];
     try {
         const testbenchContent = await fs.readFile(TESTBENCH_PATH, 'utf-8');
@@ -188,7 +166,6 @@ async function runTestSuite() {
         process.exit(1);
     }
 
-    // --- Create Output Dirs ---
     try {
         await fs.mkdir(suiteLogDir, { recursive: true });
         await fs.mkdir(suiteScreenshotDir, { recursive: true });
@@ -198,7 +175,6 @@ async function runTestSuite() {
         process.exit(1);
     }
 
-    // --- Run Tests ---
     const allTestResults: TestResult[] = [];
     const overallStartTime = Date.now();
 
@@ -215,17 +191,14 @@ async function runTestSuite() {
         let buggyRunOutcome: RunOutcome | null = null;
         let fixedRunOutcome: RunOutcome | null = null;
         let testErrorMessage: string | undefined;
-        let testStatus: 'PASSED' | 'FAILED' | 'ERROR' = 'ERROR'; // Default to error
+        let testStatus: 'PASSED' | 'FAILED' | 'ERROR' = 'ERROR';
 
         try {
-            // 1. Create Temp Directory
             tempDir = await fs.mkdtemp(path.join(os.tmpdir(), `hopper-test-${repoName}-${testCaseId}-`));
             console.log(`${testCasePrefix} Created temp directory: ${tempDir}`);
 
-            // 2. Clone Repo
             await runCommand(`git clone ${testCase['Git Link']} .`, tempDir, `${testCasePrefix} [Git]`);
 
-            // --- 3. Run Buggy Version ---
             console.log(`${testCasePrefix} --- Running Buggy Version (${testCase['Buggy Commit Hash']}) ---`);
             const buggyLogPath = path.join(suiteLogDir, `test_${testCaseNum}_${testCaseId}_buggy_${suiteTimestamp}.json`);
             const buggyScreenshotPath = path.join(suiteScreenshotDir, `test_${testCaseNum}_${testCaseId}_buggy_screenshot.png`);
@@ -233,19 +206,16 @@ async function runTestSuite() {
 
             try {
                 await runCommand(`git checkout ${testCase['Buggy Commit Hash']}`, tempDir, `${testCasePrefix} [Git]`);
-                // Run setup steps (e.g., npm install) - assumes first N-1 steps are setup
                 for (let i = 0; i < testCase['Steps to Run'].length - 1; i++) {
                     await runCommand(testCase['Steps to Run'][i], tempDir, `${testCasePrefix} [Setup]`);
                 }
-                // Start server
                 serverProcessBuggy = startServerProcess(testCase['Steps to Run'], tempDir, `${testCasePrefix} [Server Buggy]`);
                 if (!serverProcessBuggy || serverProcessBuggy.exitCode !== null || serverProcessBuggy.killed) {
                     throw new Error("Failed to start server process for buggy version.");
                 }
                 console.log(`${testCasePrefix} Waiting ${SERVER_STARTUP_TIMEOUT_MS / 1000}s for server to start...`);
-                await sleep(SERVER_STARTUP_TIMEOUT_MS); // Simple wait, replace with HTTP check if needed
+                await sleep(SERVER_STARTUP_TIMEOUT_MS);
 
-                // Run Agent
                 console.log(`${testCasePrefix} Running agent on buggy version...`);
                 buggyOutcome.agentResult = await reproduceBug(testCase['Deployment Link'], testCase['Bug Report'], {
                     headless: true,
@@ -253,22 +223,19 @@ async function runTestSuite() {
                     logFilePath: buggyLogPath,
                     screenshotPath: buggyScreenshotPath,
                     model: AGENT_MODEL,
-                    // Reduce noise in batch runs - use default options or minimal callbacks
                 });
-                buggyOutcome.success = true; // Mark infrastructure part as success if agent ran
+                buggyOutcome.success = true;
 
             } catch (err: any) {
                 console.error(`${testCasePrefix} Error during buggy run:`, err.message);
                 buggyOutcome.error = err.message || String(err);
-                buggyOutcome.success = false; // Setup/agent run failed
+                buggyOutcome.success = false;
             } finally {
                 await stopServerProcess(serverProcessBuggy, `${testCasePrefix} [Server Buggy]`);
-                buggyRunOutcome = buggyOutcome; // Store the outcome
+                buggyRunOutcome = buggyOutcome;
             }
             console.log(`${testCasePrefix} Buggy Run Outcome: Success=${buggyRunOutcome.success}, Reproducible=${buggyRunOutcome.agentResult?.reproducible ?? 'N/A'}`);
 
-
-            // --- 4. Run Fixed Version ---
             console.log(`${testCasePrefix} --- Running Fixed Version (${testCase['Fixed Commit Hash']}) ---`);
             const fixedLogPath = path.join(suiteLogDir, `test_${testCaseNum}_${testCaseId}_fixed_${suiteTimestamp}.json`);
             const fixedScreenshotPath = path.join(suiteScreenshotDir, `test_${testCaseNum}_${testCaseId}_fixed_screenshot.png`);
@@ -276,11 +243,9 @@ async function runTestSuite() {
 
             try {
                 await runCommand(`git checkout ${testCase['Fixed Commit Hash']}`, tempDir, `${testCasePrefix} [Git]`);
-                // Re-run setup steps - necessary if node_modules/builds differ
                 for (let i = 0; i < testCase['Steps to Run'].length - 1; i++) {
                     await runCommand(testCase['Steps to Run'][i], tempDir, `${testCasePrefix} [Setup]`);
                 }
-                // Start server
                 serverProcessFixed = startServerProcess(testCase['Steps to Run'], tempDir, `${testCasePrefix} [Server Fixed]`);
                 if (!serverProcessFixed || serverProcessFixed.exitCode !== null || serverProcessFixed.killed) {
                     throw new Error("Failed to start server process for fixed version.");
@@ -288,17 +253,16 @@ async function runTestSuite() {
                 console.log(`${testCasePrefix} Waiting ${SERVER_STARTUP_TIMEOUT_MS / 1000}s for server to start...`);
                 await sleep(SERVER_STARTUP_TIMEOUT_MS);
 
-                // Run Agent
                 console.log(`${testCasePrefix} Running agent on fixed version...`);
                 fixedOutcome.agentResult = await reproduceBug(testCase['Deployment Link'], testCase['Bug Report'], {
                     headless: true,
-                    maxLoops: 10, // Limit the number of loops to avoid infinite runs
+                    maxLoops: 30,
                     openaiApiKey: apiKey,
                     logFilePath: fixedLogPath,
                     screenshotPath: fixedScreenshotPath,
                     model: AGENT_MODEL,
                 });
-                fixedOutcome.success = true; // Infrastructure part successful
+                fixedOutcome.success = true;
 
             } catch (err: any) {
                 console.error(`${testCasePrefix} Error during fixed run:`, err.message);
@@ -310,8 +274,6 @@ async function runTestSuite() {
             }
             console.log(`${testCasePrefix} Fixed Run Outcome: Success=${fixedRunOutcome.success}, Reproducible=${fixedRunOutcome.agentResult?.reproducible ?? 'N/A'}`);
 
-
-            // --- 5. Determine Test Status ---
             if (!buggyRunOutcome || !fixedRunOutcome) {
                 throw new Error("Critical error: Run outcomes missing."); // Should not happen
             }
@@ -338,24 +300,19 @@ async function runTestSuite() {
             console.error(`${testCasePrefix} !!! Test Case CRITICAL ERROR:`, error.message);
             testStatus = 'ERROR';
             testErrorMessage = `Critical error during test case execution: ${error.message || String(error)}`;
-            // Ensure any potentially running servers are stopped if error happened mid-way
             await stopServerProcess(serverProcessBuggy, `${testCasePrefix} [Server Buggy Cleanup]`);
             await stopServerProcess(serverProcessFixed, `${testCasePrefix} [Server Fixed Cleanup]`);
         } finally {
-            // --- 6. Cleanup Temp Directory ---
             if (tempDir) {
                 console.log(`${testCasePrefix} Cleaning up temp directory: ${tempDir}`);
                 try {
-                    // Add retries or delay if needed, especially on Windows
                     await fs.rm(tempDir, { recursive: true, force: true, maxRetries: 3, retryDelay: 1000 });
                     console.log(`${testCasePrefix} Temp directory removed.`);
                 } catch (rmError: any) {
                     console.error(`${testCasePrefix} !!! Failed to remove temp directory ${tempDir}:`, rmError.message);
-                    // Don't let cleanup failure stop the whole suite
                 }
             }
 
-            // --- 7. Record Final Result ---
             allTestResults.push({
                 testCaseId: testCaseId,
                 repo: repoName,
@@ -369,7 +326,6 @@ async function runTestSuite() {
         }
     }
 
-    // --- Final Suite Summary ---
     const overallEndTime = Date.now();
     const suiteDuration = ((overallEndTime - overallStartTime) / 1000).toFixed(2);
     console.log(`\n\n--- Test Suite Finished (${suiteDuration}s) ---`);
@@ -393,7 +349,6 @@ async function runTestSuite() {
     console.log(`\nTotal Tests: ${testCases.length} | Passed: ${passed} | Failed: ${failed} | Errors: ${errors}`);
     console.log(`Detailed logs and screenshots saved in: ${suiteOutputDir}`);
 
-    // Optionally save summary to a file
     try {
         const summaryPath = path.join(suiteOutputDir, 'test_summary.json');
         await fs.writeFile(summaryPath, JSON.stringify(allTestResults, null, 2));
@@ -401,14 +356,11 @@ async function runTestSuite() {
     } catch (e) {
         console.error("Failed to write summary JSON file.", e);
     }
-
-    // Exit with non-zero code if any tests failed or errored
     if (failed > 0 || errors > 0) {
         process.exitCode = 1;
     }
 }
 
-// --- Run the Suite ---
 runTestSuite().catch(err => {
     console.error("\n--- UNHANDLED FATAL ERROR IN TEST SUITE RUNNER ---");
     console.error(err);

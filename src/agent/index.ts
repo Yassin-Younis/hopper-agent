@@ -1,4 +1,3 @@
-// src/agent/index.ts
 import OpenAI from "openai";
 import {
     ChatCompletionMessageParam,

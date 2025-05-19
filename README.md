@@ -63,6 +63,9 @@ Hopper Agent tackles this by:
 *   **npm** or **yarn**
 *   **OpenAI API Key:** You need an API key from OpenAI.
 
+## Running Tests
+Run the batch test runner located at `/tests/test_runner.ts`. Ensure that `/tests/testbench.json` is properly configured.
+
 ## Installation & Setup 🚀
 
 1.  **Clone the repository:**
@@ -167,10 +170,3 @@ You can run the provided examples:
 *   Better handling of dynamic waits and asynchronous UI updates.
 *   UI for easier bug report submission and result viewing.
 
-## Contributing 🤝
-
-Contributions are welcome! Please feel free to open issues or submit pull requests.
-
-## License 📜
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details (or add one if missing).

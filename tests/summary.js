@@ -5,7 +5,6 @@ const jsonFilePath = path.join(__dirname, 'testbench.json');
 const htmlFilePath = path.join(__dirname, 'testbench_report.html');
 
 try {
-    // --- 1. Read and Parse Data ---
     console.log(`Reading data from ${jsonFilePath}...`);
     const rawData = fs.readFileSync(jsonFilePath, 'utf-8');
     const bugsData = JSON.parse(rawData);
@@ -16,7 +15,6 @@ try {
         process.exit(0);
     }
 
-    // --- 2. Calculate Statistics (same logic as before) ---
     const totalBugs = bugsData.length;
     const repositories = new Set();
     const bugsPerRepo = {};
@@ -234,8 +232,6 @@ try {
 </body>
 </html>
     `;
-
-    // --- 4. Write HTML to File ---
     fs.writeFileSync(htmlFilePath, htmlContent, 'utf-8');
     console.log(`\n📊 Report generated successfully! Open ${htmlFilePath} in your browser.`);
 
